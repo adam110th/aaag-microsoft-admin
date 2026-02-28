@@ -93,7 +93,7 @@ def fetch_assignments_count(client: GraphClient, sp_id: str) -> int:
     """Return the count of users/groups assigned to a service principal."""
     url = (
         f"{GRAPH_BASE}/servicePrincipals/{sp_id}/appRoleAssignedTo"
-        f"?$count=true&$top=0"
+        f"?$count=true&$top=1"
     )
     try:
         resp = client.get(url, headers_extra={"ConsistencyLevel": "eventual"})
