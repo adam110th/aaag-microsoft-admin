@@ -37,9 +37,9 @@ python -m src              # launches interactive menu
 
 | Module | Purpose |
 |--------|---------|
-| `config.py` | `load_environment(extra_required, extra_optional)`, constants |
+| `config.py` | `load_environment(extra_required, extra_optional)`, constants (`GRAPH_BASE`, `GRAPH_BETA`) |
 | `auth.py` | `get_client_credentials_token(env, scopes)`, `get_delegated_token(env, scopes)` |
-| `graph_client.py` | `GraphClient` class with retry (429/5xx), pagination (`@odata.nextLink`), error parsing |
+| `graph_client.py` | `GraphClient` class: `get()`, `post()`, `patch()`, `delete()`, `get_paged()` with retry (429/5xx), pagination, error parsing |
 | `utils.py` | `write_with_lock_check()`, `save_json()`, `sanitize_filename()`, `parse_range_selection()` |
 
 ### Tools
@@ -47,7 +47,7 @@ python -m src              # launches interactive menu
 | Tool | Module | Permissions |
 |------|--------|-------------|
 | Teams Chat Export | `src.tools.teams_chat_export` | App: `Chat.Read.All`; Delegated: `Chat.Read`, `Chat.ReadBasic` |
-| Enterprise Apps | `src.tools.enterprise_apps` | App: `Application.Read.All` (read), `Application.ReadWrite.All` (delete, on demand) |
+| Enterprise Apps | `src.tools.enterprise_apps` | App: `Application.Read.All` (read), `Application.ReadWrite.All` (delete, on demand). Detail view shows Roles and Administrators (app roles + granted API permissions), users/groups, SSO, provisioning. |
 
 ### Tool Registration
 
@@ -67,9 +67,14 @@ Each tool package exports a `TOOL` constant (`ToolDefinition` dataclass with nam
 
 - `extract_pst_emails.py` — PST email extractor (Windows-only, Outlook COM). Not part of the toolkit menu.
 
+## Documentation
+
+- `docs/implementation-roadmap.md` — Prioritised tool implementation plan (5 tiers)
+- `.claude/project-skills/microsoft-admin-knowledge-bank.md` — M365 admin Graph API reference
+
 ## Testing
 
-64 tests across:
+68+ tests across:
 - `tests/core/` — config, auth (mocked MSAL), graph_client (retry, pagination, errors), utils
 - `tests/tools/` — teams_chat_export (messages, media, output formats), enterprise_apps (cert status, SP listing, detail view, delete flow)
 

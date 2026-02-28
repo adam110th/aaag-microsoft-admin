@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 # ---------------------------------------------------------------------------
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
+GRAPH_BETA = "https://graph.microsoft.com/beta"
 TOKEN_CACHE_PATH = pathlib.Path(__file__).resolve().parent.parent.parent / ".token_cache.bin"
 REQUEST_TIMEOUT = 30   # seconds for normal API calls
 DOWNLOAD_TIMEOUT = 60  # seconds for large file downloads

@@ -25,7 +25,7 @@ class TenantMismatchError(Exception):
 
 
 class GraphClient:
-    """Binds a token and provides ``get()``, ``delete()``, ``get_paged()``."""
+    """Binds a token and provides ``get()``, ``post()``, ``patch()``, ``delete()``, ``get_paged()``."""
 
     def __init__(self, token: str) -> None:
         self.token = token
@@ -40,9 +40,12 @@ class GraphClient:
         timeout: int = REQUEST_TIMEOUT,
         stream: bool = False,
         headers_extra: dict[str, str] | None = None,
+        json_body: dict | list | None = None,
     ) -> requests.Response:
         """Execute an HTTP request with exponential backoff for 429 / 5xx."""
         headers: dict[str, str] = {"Authorization": f"Bearer {self.token}"}
+        if json_body is not None:
+            headers["Content-Type"] = "application/json"
         if headers_extra:
             headers.update(headers_extra)
 
@@ -54,6 +57,7 @@ class GraphClient:
                     headers=headers,
                     timeout=timeout,
                     stream=stream,
+                    json=json_body,
                 )
             except requests.exceptions.Timeout:
                 print(f"  Timeout on attempt {attempt}/{MAX_RETRIES}: {url}")
@@ -120,6 +124,26 @@ class GraphClient:
         return self._request(
             "GET", url, timeout=timeout, stream=stream, headers_extra=headers_extra,
         )
+
+    def post(
+        self,
+        url: str,
+        *,
+        json_body: dict | list | None = None,
+        timeout: int = REQUEST_TIMEOUT,
+    ) -> requests.Response:
+        """HTTP POST with retry."""
+        return self._request("POST", url, json_body=json_body, timeout=timeout)
+
+    def patch(
+        self,
+        url: str,
+        *,
+        json_body: dict | list | None = None,
+        timeout: int = REQUEST_TIMEOUT,
+    ) -> requests.Response:
+        """HTTP PATCH with retry."""
+        return self._request("PATCH", url, json_body=json_body, timeout=timeout)
 
     def delete(self, url: str, *, timeout: int = REQUEST_TIMEOUT) -> requests.Response:
         """HTTP DELETE with retry."""
