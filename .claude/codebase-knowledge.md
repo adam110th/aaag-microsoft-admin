@@ -47,7 +47,7 @@ python -m src              # launches interactive menu
 | Tool | Module | Permissions |
 |------|--------|-------------|
 | Teams Chat Export | `src.tools.teams_chat_export` | App: `Chat.Read.All`; Delegated: `Chat.Read`, `Chat.ReadBasic` |
-| Enterprise Apps | `src.tools.enterprise_apps` | App: `Application.Read.All` (read), `Application.ReadWrite.All` (delete, on demand). Detail view shows Roles and Administrators (app roles + granted API permissions), users/groups, SSO, provisioning. |
+| Enterprise Apps | `src.tools.enterprise_apps` | App: `Application.Read.All` (read), `Application.ReadWrite.All` (delete, on demand). Sorting by name/created/cert-expiry/assignments. Detail view shows Roles and Administrators (app roles + granted API permissions), users/groups, SSO, provisioning. |
 
 ### Tool Registration
 
@@ -74,7 +74,7 @@ Each tool package exports a `TOOL` constant (`ToolDefinition` dataclass with nam
 
 ## Testing
 
-68+ tests across:
+76 tests across:
 - `tests/core/` — config, auth (mocked MSAL), graph_client (retry, pagination, errors), utils
 - `tests/tools/` — teams_chat_export (messages, media, output formats), enterprise_apps (cert status, SP listing, detail view, delete flow)
 

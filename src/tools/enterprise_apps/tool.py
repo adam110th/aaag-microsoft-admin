@@ -91,12 +91,75 @@ def fetch_all_service_principals(client: GraphClient) -> list[dict]:
 
 def fetch_assignments_count(client: GraphClient, sp_id: str) -> int:
     """Return the count of users/groups assigned to a service principal."""
-    url = f"{GRAPH_BASE}/servicePrincipals/{sp_id}/appRoleAssignedTo/$count"
+    url = (
+        f"{GRAPH_BASE}/servicePrincipals/{sp_id}/appRoleAssignedTo"
+        f"?$count=true&$top=0"
+    )
     try:
         resp = client.get(url, headers_extra={"ConsistencyLevel": "eventual"})
-        return int(resp.text.strip())
-    except Exception:
+        return int(resp.json().get("@odata.count", 0))
+    except Exception as exc:
+        print(f"  WARN: Could not fetch assignment count for {sp_id}: {exc}")
         return 0
+
+
+# ---------------------------------------------------------------------------
+# Sorting
+# ---------------------------------------------------------------------------
+
+SORT_LABELS = {
+    "name": "Name (A-Z)",
+    "created": "Created Date (oldest first)",
+    "cert_expiry": "Certificate Expiry (soonest first)",
+    "assignments": "Users/Groups (most first)",
+}
+
+
+def sort_apps(apps: list[dict], key: str) -> None:
+    """Sort *apps* in-place by *key*.
+
+    Keys:
+        ``"name"``         — displayName, case-insensitive, A-Z
+        ``"created"``      — createdDateTime, oldest first, missing last
+        ``"cert_expiry"``  — soonest certificate expiry first, no-cert last
+        ``"assignments"``  — highest assignment count first, unfetched last
+    """
+    if key == "name":
+        apps.sort(key=lambda a: (a.get("displayName") or "").lower())
+
+    elif key == "created":
+        def _created_key(a: dict) -> tuple[int, str]:
+            val = a.get("createdDateTime", "")
+            return (0, val) if val else (1, "")
+        apps.sort(key=_created_key)
+
+    elif key == "cert_expiry":
+        def _cert_key(a: dict) -> tuple[int, str]:
+            _, expiry = compute_cert_status(a.get("keyCredentials", []))
+            return (0, expiry) if expiry != "---" else (1, "")
+        apps.sort(key=_cert_key)
+
+    elif key == "assignments":
+        def _assign_key(a: dict) -> tuple[int, int]:
+            val = a.get("_assignments_count", "---")
+            if isinstance(val, int):
+                # Negate so highest sorts first
+                return (0, -val)
+            return (1, 0)
+        apps.sort(key=_assign_key)
+
+
+def fetch_all_assignments(client: GraphClient, apps: list[dict]) -> None:
+    """Fetch assignment counts for all apps that still show ``"---"``."""
+    pending = [a for a in apps if a.get("_assignments_count", "---") == "---"]
+    if not pending:
+        return
+    total = len(pending)
+    print(f"  Fetching assignment counts for {total} apps ...")
+    for done, app in enumerate(pending, 1):
+        app["_assignments_count"] = fetch_assignments_count(client, app["id"])
+        if done % 10 == 0 or done == total:
+            print(f"    {done}/{total}")
 
 
 # ---------------------------------------------------------------------------
@@ -386,12 +449,17 @@ def run() -> None:
     for app in apps[:20]:
         app["_assignments_count"] = fetch_assignments_count(client, app["id"])
 
+    # Default sort by name
+    current_sort = "name"
+    sort_apps(apps, current_sort)
     display_list_table(apps)
 
     # Sub-menu loop
     while True:
+        print(f"\n  Current sort: {SORT_LABELS.get(current_sort, current_sort)}")
         print("\n  [1] View app details")
         print("  [2] Delete apps")
+        print("  [3] Sort list")
         print("  [0] Return to main menu")
         try:
             choice = input("\nChoice: ").strip()
@@ -440,11 +508,39 @@ def run() -> None:
             except (GraphPermissionError, HTTPError) as exc:
                 print(f"  ERROR refreshing list: {exc}")
                 break
-            if apps:
-                display_list_table(apps)
-            else:
+            if not apps:
                 print("No enterprise applications remaining.")
                 break
+            # Re-apply sort after refresh
+            if current_sort == "assignments":
+                fetch_all_assignments(client, apps)
+            sort_apps(apps, current_sort)
+            display_list_table(apps)
+
+        elif choice == "3":
+            print("\n  Sort by:")
+            print("    [1] Name (A-Z)")
+            print("    [2] Created Date (oldest first)")
+            print("    [3] Certificate Expiry (soonest first)")
+            print("    [4] Users/Groups (most first)")
+            print("    [0] Cancel")
+            try:
+                sort_choice = input("\n  Sort choice: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                continue
+            sort_map = {"1": "name", "2": "created", "3": "cert_expiry", "4": "assignments"}
+            new_sort = sort_map.get(sort_choice)
+            if not new_sort:
+                if sort_choice != "0":
+                    print("  Invalid sort choice.")
+                continue
+            if new_sort == "assignments":
+                fetch_all_assignments(client, apps)
+            current_sort = new_sort
+            sort_apps(apps, current_sort)
+            display_list_table(apps)
+
         else:
             print("  Invalid choice.")
 

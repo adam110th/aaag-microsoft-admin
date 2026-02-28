@@ -14,9 +14,11 @@ from src.tools.enterprise_apps.tool import (
     compute_cert_status,
     delete_apps,
     display_list_table,
+    fetch_all_assignments,
     fetch_all_service_principals,
     fetch_assignments_count,
     show_app_details,
+    sort_apps,
 )
 from tests.conftest import FAKE_TOKEN, make_env
 
@@ -122,14 +124,29 @@ class TestFetchAllServicePrincipals:
 class TestFetchAssignmentsCount:
     @responses.activate
     def test_returns_count(self) -> None:
-        url = f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignedTo/$count"
-        responses.add(responses.GET, url, body="5", status=200)
+        url = f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignedTo"
+        responses.add(
+            responses.GET, url,
+            json={"@odata.count": 5, "value": []},
+            status=200,
+        )
         client = GraphClient(FAKE_TOKEN)
         assert fetch_assignments_count(client, "sp-1") == 5
 
     @responses.activate
+    def test_returns_zero_when_no_count(self) -> None:
+        url = f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignedTo"
+        responses.add(
+            responses.GET, url,
+            json={"value": []},
+            status=200,
+        )
+        client = GraphClient(FAKE_TOKEN)
+        assert fetch_assignments_count(client, "sp-1") == 0
+
+    @responses.activate
     def test_returns_zero_on_error(self) -> None:
-        url = f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignedTo/$count"
+        url = f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignedTo"
         responses.add(responses.GET, url, status=404)
         client = GraphClient(FAKE_TOKEN)
         assert fetch_assignments_count(client, "sp-1") == 0
@@ -266,6 +283,96 @@ class TestShowAppDetails:
         out = capsys.readouterr().out
         assert "Microsoft Graph" in out
         assert "abcd1234" in out
+
+
+# ---------------------------------------------------------------------------
+# delete_apps
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# sort_apps
+# ---------------------------------------------------------------------------
+
+
+class TestSortApps:
+    def test_sort_by_name(self) -> None:
+        apps = [make_sp("sp-2", "Zebra"), make_sp("sp-1", "Alpha"), make_sp("sp-3", "middle")]
+        sort_apps(apps, "name")
+        assert [a["displayName"] for a in apps] == ["Alpha", "middle", "Zebra"]
+
+    def test_sort_by_created(self) -> None:
+        apps = [
+            {**make_sp("sp-1"), "createdDateTime": "2025-06-01T00:00:00Z"},
+            {**make_sp("sp-2"), "createdDateTime": "2025-01-01T00:00:00Z"},
+            {**make_sp("sp-3"), "createdDateTime": ""},
+        ]
+        sort_apps(apps, "created")
+        assert apps[0]["id"] == "sp-2"  # oldest first
+        assert apps[2]["id"] == "sp-3"  # missing last
+
+    def test_sort_by_cert_expiry(self) -> None:
+        future_near = (datetime.now(tz=timezone.utc) + timedelta(days=10)).isoformat()
+        future_far = (datetime.now(tz=timezone.utc) + timedelta(days=90)).isoformat()
+        apps = [
+            make_sp("sp-1", "NoCert"),
+            make_sp("sp-2", "Far", key_credentials=[{"endDateTime": future_far}]),
+            make_sp("sp-3", "Near", key_credentials=[{"endDateTime": future_near}]),
+        ]
+        sort_apps(apps, "cert_expiry")
+        assert apps[0]["id"] == "sp-3"  # soonest first
+        assert apps[1]["id"] == "sp-2"  # further later
+        assert apps[2]["id"] == "sp-1"  # no cert last
+
+    def test_sort_by_assignments(self) -> None:
+        apps = [
+            {**make_sp("sp-1"), "_assignments_count": 2},
+            {**make_sp("sp-2"), "_assignments_count": 10},
+            {**make_sp("sp-3"), "_assignments_count": "---"},
+        ]
+        sort_apps(apps, "assignments")
+        assert apps[0]["id"] == "sp-2"  # most first
+        assert apps[1]["id"] == "sp-1"
+        assert apps[2]["id"] == "sp-3"  # unfetched last
+
+
+# ---------------------------------------------------------------------------
+# fetch_all_assignments
+# ---------------------------------------------------------------------------
+
+
+class TestFetchAllAssignments:
+    @responses.activate
+    def test_fetches_only_missing(self) -> None:
+        apps = [
+            {**make_sp("sp-1"), "_assignments_count": 5},
+            {**make_sp("sp-2"), "_assignments_count": "---"},
+            {**make_sp("sp-3")},  # no key at all → defaults to "---"
+        ]
+        # Mock for sp-2 and sp-3
+        for sp_id, count in [("sp-2", 3), ("sp-3", 7)]:
+            responses.add(
+                responses.GET,
+                f"{GRAPH_BASE}/servicePrincipals/{sp_id}/appRoleAssignedTo",
+                json={"@odata.count": count, "value": []},
+                status=200,
+            )
+        client = GraphClient(FAKE_TOKEN)
+        fetch_all_assignments(client, apps)
+        assert apps[0]["_assignments_count"] == 5  # unchanged
+        assert apps[1]["_assignments_count"] == 3
+        assert apps[2]["_assignments_count"] == 7
+
+    def test_noop_when_all_fetched(self) -> None:
+        apps = [
+            {**make_sp("sp-1"), "_assignments_count": 5},
+            {**make_sp("sp-2"), "_assignments_count": 0},
+        ]
+        client = GraphClient(FAKE_TOKEN)
+        # Should not make any HTTP calls — no mocks needed
+        fetch_all_assignments(client, apps)
+        assert apps[0]["_assignments_count"] == 5
+        assert apps[1]["_assignments_count"] == 0
 
 
 # ---------------------------------------------------------------------------
