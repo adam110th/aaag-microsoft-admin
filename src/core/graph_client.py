@@ -15,7 +15,20 @@ from src.core.config import MAX_RETRIES, REQUEST_TIMEOUT
 # ---------------------------------------------------------------------------
 
 
-class TenantMismatchError(Exception):
+class GraphAPIError(Exception):
+    """Base exception for Graph API errors with structured detail."""
+
+    def __init__(self, message: str, status_code: int, code: str = "") -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.code = code
+
+
+class GraphPermissionError(GraphAPIError):
+    """Raised when Graph API returns 403 due to insufficient permissions."""
+
+
+class TenantMismatchError(GraphAPIError):
     """Raised when Graph API returns 403 due to cross-tenant access."""
 
 
@@ -102,11 +115,13 @@ class GraphClient:
         if err_inner:
             print(f"  Inner error: {json.dumps(err_inner, indent=4)}")
 
-        # Detect cross-tenant 403
+        # Detect specific 403 sub-types
         inner_msg = err_inner.get("message", "") if isinstance(err_inner, dict) else ""
         combined = f"{err_msg} {inner_msg}".lower()
-        if resp.status_code == 403 and "tenant id mismatch" in combined:
-            raise TenantMismatchError(err_msg)
+        if resp.status_code == 403:
+            if "tenant id mismatch" in combined:
+                raise TenantMismatchError(err_msg, 403, err_code)
+            raise GraphPermissionError(err_msg, 403, err_code)
 
         resp.raise_for_status()
 

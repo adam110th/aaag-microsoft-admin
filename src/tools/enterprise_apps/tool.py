@@ -15,9 +15,11 @@ from datetime import datetime, timezone
 
 from tabulate import tabulate
 
-from src.core.auth import get_client_credentials_token, get_delegated_token
+from requests.exceptions import HTTPError
+
+from src.core.auth import check_token_roles, get_client_credentials_token, get_delegated_token
 from src.core.config import GRAPH_BASE, load_environment
-from src.core.graph_client import GraphClient
+from src.core.graph_client import GraphClient, GraphPermissionError
 from src.core.utils import parse_range_selection
 from src.tools._base import ToolDefinition
 
@@ -343,11 +345,37 @@ def run() -> None:
         token = get_delegated_token(env, READ_SCOPES_DELEGATED)
 
     client = GraphClient(token)
-    print("Authenticated successfully.\n")
+    print("Authenticated successfully.")
+
+    # Warn early if the token is missing required roles
+    if "AZURE_CLIENT_SECRET" in env:
+        missing = check_token_roles(token, ["Application.Read.All"])
+        if missing:
+            print(f"\n  WARNING: Token is missing required roles: {', '.join(missing)}")
+            print("  The app registration needs these API permissions granted with admin consent.")
+            print("  Attempting to proceed anyway ...\n")
+        else:
+            print()
 
     # Fetch service principals
     print("Fetching enterprise applications ...")
-    apps = fetch_all_service_principals(client)
+    try:
+        apps = fetch_all_service_principals(client)
+    except GraphPermissionError as exc:
+        print("\n  ERROR: Insufficient permissions to list enterprise applications.")
+        print(f"  Detail: {exc}")
+        print()
+        print("  To fix this, add the following to your Azure AD app registration:")
+        print("    1. Go to Azure Portal > App registrations > your app")
+        print("    2. API permissions > Add a permission > Microsoft Graph")
+        print("    3. Application permissions > Application.Read.All")
+        print("    4. Click 'Grant admin consent' (requires Global Administrator)")
+        print()
+        print("  Current token roles can be viewed in the diagnostic output above.")
+        return
+    except HTTPError as exc:
+        print(f"\n  ERROR: Failed to fetch enterprise applications: {exc}")
+        return
 
     if not apps:
         print("No enterprise applications found.")
@@ -407,7 +435,11 @@ def run() -> None:
             delete_apps(apps, env, selected)
             # Refresh the list after deletions
             print("\nRefreshing list ...")
-            apps = fetch_all_service_principals(client)
+            try:
+                apps = fetch_all_service_principals(client)
+            except (GraphPermissionError, HTTPError) as exc:
+                print(f"  ERROR refreshing list: {exc}")
+                break
             if apps:
                 display_list_table(apps)
             else:

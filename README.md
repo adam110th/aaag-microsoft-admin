@@ -16,8 +16,26 @@ See [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md) for the p
 ## Prerequisites
 
 - Python 3.14+
-- Azure AD app registration with appropriate permissions (each tool lists its own)
+- Azure AD app registration with appropriate permissions (see [Permissions](#permissions))
 - `.env` file with credentials (see [Configuration](#configuration))
+
+## Permissions
+
+Each tool requires specific Microsoft Graph API permissions. These must be added to your Azure AD app registration **and** granted admin consent.
+
+| Tool | Application Permissions | Delegated Permissions |
+|------|------------------------|----------------------|
+| **Enterprise Applications** | `Application.Read.All` (read), `Application.ReadWrite.All` (delete) | `Application.Read.All`, `User.Read` |
+| **Teams Chat Export** | `Chat.Read.All` | `Chat.Read`, `Chat.ReadBasic`, `User.Read` |
+
+### Setup
+
+1. Go to **Azure Portal** > **App registrations** > select your app
+2. **API permissions** > **Add a permission** > **Microsoft Graph**
+3. Add the required **Application permissions** and/or **Delegated permissions** for the tools you need
+4. Click **Grant admin consent for [your tenant]** (requires Global Administrator or Privileged Role Administrator)
+
+Each tool validates its permissions at startup and displays actionable error messages if permissions are missing.
 
 ## Installation
 
