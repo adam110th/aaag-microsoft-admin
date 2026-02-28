@@ -1,0 +1,292 @@
+{
+  "$schema": "./skill-rules.schema.json",
+  "version": "1.0",
+  "config": {
+    "minConfidenceScore": 3,
+    "showMatchReasons": true,
+    "maxSkillsToShow": 5
+  },
+  "scoring": {
+    "keyword": 2,
+    "keywordPattern": 3,
+    "pathPattern": 4,
+    "directoryMatch": 5,
+    "intentPattern": 4,
+    "contentPattern": 3,
+    "contextPattern": 2
+  },
+  "directoryMappings": {
+    "tests": "testing-patterns",
+    "test": "testing-patterns",
+    "src/tests": "testing-patterns",
+    "scripts": "resource-cleanup",
+    "templates": "web-page-defaults",
+    "static": "web-page-defaults",
+    ".github/workflows": "auto-update-github-common-files",
+    ".claude/default-skills": "repository-knowledge-map",
+    ".claude/project-skills": "repository-knowledge-map",
+    "docs": "document-citations",
+    "models": "encoding-handling",
+    "utils": "resource-cleanup"
+  },
+  "skills": {
+    "testing-patterns": {
+      "description": "Python testing patterns with pytest, fixtures, mocking, and TDD",
+      "priority": 9,
+      "triggers": {
+        "keywords": ["test", "pytest", "unittest", "mock", "fixture", "tdd", "coverage", "assert"],
+        "keywordPatterns": ["\\btest(?:s|ing)?\\b", "\\bspec\\b", "\\bpytest\\b", "unit test"],
+        "pathPatterns": ["**/test_*.py", "**/*_test.py", "**/tests/**", "**/conftest.py"],
+        "intentPatterns": [
+          "(?:write|add|create|fix).*(?:test|spec)",
+          "(?:test|spec).*(?:for|of|the)",
+          "(?:red.green.refactor|tdd)"
+        ],
+        "contentPatterns": ["def test_", "pytest", "@pytest\\.fixture", "mock\\.patch", "assert "]
+      },
+      "excludePatterns": ["e2e", "selenium", "playwright"],
+      "relatedSkills": ["systematic-debugging"]
+    },
+    "systematic-debugging": {
+      "description": "Four-phase debugging with root cause analysis",
+      "priority": 9,
+      "triggers": {
+        "keywords": ["bug", "debug", "fix", "error", "issue", "broken", "crash", "failing", "traceback", "exception"],
+        "keywordPatterns": ["\\bbug\\b", "\\bfix\\b", "\\berror\\b", "\\bissue\\b", "doesn't work", "not working"],
+        "intentPatterns": [
+          "(?:fix|debug|resolve|investigate).*(?:bug|error|issue|problem)",
+          "(?:why).*(?:not working|broken|failing|crash)",
+          "(?:something).*(?:wrong|broken)"
+        ],
+        "contentPatterns": ["Traceback", "Exception", "Error:", "raise "]
+      },
+      "excludePatterns": ["fix typo", "fix formatting", "fix lint"],
+      "relatedSkills": ["testing-patterns", "graceful-error-logging"]
+    },
+    "excel-repair": {
+      "description": "Excel external link repair for openpyxl and pandas xlsx saves",
+      "priority": 8,
+      "triggers": {
+        "keywords": ["excel", "xlsx", "openpyxl", "spreadsheet", "workbook"],
+        "keywordPatterns": ["\\bexcel\\b", "\\bxlsx\\b", "\\bopenpyxl\\b"],
+        "pathPatterns": ["**/*.xlsx", "**/*excel*.py", "**/*spreadsheet*.py"],
+        "intentPatterns": [
+          "(?:create|generate|save|export).*(?:excel|xlsx|spreadsheet|workbook)",
+          "(?:excel|xlsx).*(?:file|report|output)"
+        ],
+        "contentPatterns": ["openpyxl", "to_excel", "ExcelWriter", "load_workbook"]
+      },
+      "relatedSkills": ["document-citations"]
+    },
+    "encoding-handling": {
+      "description": "UTF-8 encoding and file I/O patterns",
+      "priority": 7,
+      "triggers": {
+        "keywords": ["encoding", "utf-8", "unicode", "codec", "chardet", "decode", "encode"],
+        "keywordPatterns": ["\\bencoding\\b", "\\butf-?8\\b", "\\bunicode\\b"],
+        "intentPatterns": [
+          "(?:read|write|open).*(?:file|text)",
+          "(?:encoding).*(?:error|issue|problem)"
+        ],
+        "contentPatterns": ["encoding=", "UnicodeDecodeError", "chardet", "open\\("]
+      }
+    },
+    "resource-cleanup": {
+      "description": "Context managers, file handles, connections, and cleanup",
+      "priority": 7,
+      "triggers": {
+        "keywords": ["file", "connection", "socket", "database", "handle", "context manager", "with statement"],
+        "keywordPatterns": ["\\bwith\\b.*\\bopen\\b", "\\bcontext.manager\\b"],
+        "pathPatterns": ["**/*db*.py", "**/*connection*.py", "**/*client*.py"],
+        "intentPatterns": [
+          "(?:open|connect|create).*(?:file|database|connection|socket)",
+          "(?:close|cleanup|release).*(?:resource|connection)"
+        ],
+        "contentPatterns": ["with open", "contextmanager", "\\.__enter__", "\\.__exit__"]
+      }
+    },
+    "sensitive-data-protection": {
+      "description": "Secrets, API keys, credentials, and env file handling",
+      "priority": 8,
+      "triggers": {
+        "keywords": ["api key", "secret", "password", "credential", "token", "env", "dotenv"],
+        "keywordPatterns": ["\\bsecret\\b", "\\bapi.key\\b", "\\bcredential\\b", "\\b\\.env\\b"],
+        "pathPatterns": ["**/.env*", "**/*secret*", "**/*credential*", "**/*config*.py"],
+        "intentPatterns": [
+          "(?:store|save|use).*(?:api key|secret|password|token)",
+          "(?:env|environment).*(?:variable|config)"
+        ],
+        "contentPatterns": ["os\\.environ", "dotenv", "getenv", "API_KEY", "SECRET"]
+      },
+      "relatedSkills": ["env-file-quoting"]
+    },
+    "env-file-quoting": {
+      "description": "Single-quote all .env values to prevent # truncation",
+      "priority": 7,
+      "triggers": {
+        "keywords": [".env", "dotenv", "environment file"],
+        "pathPatterns": ["**/.env", "**/.env.*", "**/.env.example"],
+        "intentPatterns": [
+          "(?:create|update|edit).*(?:\\.env|env file|environment)"
+        ]
+      },
+      "relatedSkills": ["sensitive-data-protection"]
+    },
+    "web-page-defaults": {
+      "description": "Web project setup with htaccess, robots.txt, error pages",
+      "priority": 7,
+      "triggers": {
+        "keywords": ["website", "webpage", "web page", "html", "htaccess", "robots.txt", "favicon"],
+        "keywordPatterns": ["\\bweb\\b", "\\bhtml\\b", "\\bhtaccess\\b"],
+        "pathPatterns": ["**/*.html", "**/.htaccess", "**/robots.txt", "**/templates/**"],
+        "intentPatterns": [
+          "(?:create|build|generate).*(?:website|web page|html)",
+          "(?:web).*(?:project|site|page)"
+        ],
+        "contentPatterns": ["<!DOCTYPE", "<html", "flask", "django", "fastapi"]
+      }
+    },
+    "dependency-management": {
+      "description": "Requirements pinning, consolidation, and pip management",
+      "priority": 7,
+      "triggers": {
+        "keywords": ["requirements", "pip", "dependency", "package", "install", "requirements.txt"],
+        "keywordPatterns": ["\\bpip\\b", "\\brequirements\\b", "\\bpackage\\b"],
+        "pathPatterns": ["**/requirements*.txt", "**/setup.py", "**/setup.cfg", "**/pyproject.toml"],
+        "intentPatterns": [
+          "(?:add|install|update|upgrade).*(?:package|dependency|library)",
+          "(?:requirements).*(?:file|txt|update)"
+        ],
+        "contentPatterns": ["pip install", "requirements", "setup\\(", "pyproject"]
+      },
+      "relatedSkills": ["python-version"]
+    },
+    "python-version": {
+      "description": "Python version compatibility and upgrade checks",
+      "priority": 6,
+      "triggers": {
+        "keywords": ["python version", "python 3", "upgrade python", "compatibility"],
+        "keywordPatterns": ["python.?\\d", "\\bpep\\b"],
+        "intentPatterns": [
+          "(?:upgrade|update|check).*(?:python|version)",
+          "(?:compatible|support).*(?:python|version)"
+        ]
+      },
+      "relatedSkills": ["dependency-management"]
+    },
+    "parallel-orchestration": {
+      "description": "Multi-agent task decomposition and parallel execution",
+      "priority": 6,
+      "triggers": {
+        "keywords": ["parallel", "concurrent", "multi-agent", "orchestrate", "decompose"],
+        "keywordPatterns": ["\\bparallel\\b", "\\bconcurrent\\b"],
+        "intentPatterns": [
+          "(?:split|decompose|parallelize).*(?:task|work)",
+          "(?:multiple).*(?:file|component|module)"
+        ]
+      }
+    },
+    "document-citations": {
+      "description": "Source references for generated documents and spreadsheets",
+      "priority": 5,
+      "triggers": {
+        "keywords": ["citation", "reference", "source", "bibliography", "report"],
+        "keywordPatterns": ["\\bcitation\\b", "\\breference\\b"],
+        "pathPatterns": ["**/docs/**", "**/*report*.py"],
+        "intentPatterns": [
+          "(?:generate|create).*(?:report|document|spreadsheet)",
+          "(?:cite|reference).*(?:source|data)"
+        ]
+      },
+      "relatedSkills": ["excel-repair"]
+    },
+    "error-handling": {
+      "description": "Graceful error logging, file-locked, file-not-found patterns",
+      "priority": 6,
+      "triggers": {
+        "keywords": ["error handling", "exception", "try", "except", "logging", "graceful"],
+        "keywordPatterns": ["\\berror.handling\\b", "\\bexception\\b", "\\blogging\\b"],
+        "intentPatterns": [
+          "(?:handle|catch|log).*(?:error|exception)",
+          "(?:add).*(?:error handling|logging)"
+        ],
+        "contentPatterns": ["try:", "except ", "logging\\.", "logger\\."]
+      },
+      "relatedSkills": ["systematic-debugging"]
+    },
+    "verification-before-completion": {
+      "description": "Evidence-based completion claims protocol",
+      "priority": 8,
+      "triggers": {
+        "keywords": ["verify", "check", "confirm", "done", "complete", "finished"],
+        "intentPatterns": [
+          "(?:is it|are we).*(?:done|complete|finished)",
+          "(?:verify|check|confirm).*(?:works|passes)"
+        ],
+        "contextPatterns": ["before claiming", "make sure", "double check"]
+      },
+      "relatedSkills": ["testing-patterns"]
+    },
+    "gitignore-management": {
+      "description": "Tailored .gitignore file creation and maintenance",
+      "priority": 5,
+      "triggers": {
+        "keywords": ["gitignore", ".gitignore", "ignore file"],
+        "pathPatterns": ["**/.gitignore"],
+        "intentPatterns": [
+          "(?:create|update|add).*(?:gitignore|ignore)"
+        ]
+      }
+    },
+    "readme-creation": {
+      "description": "README.md file creation and maintenance",
+      "priority": 5,
+      "triggers": {
+        "keywords": ["readme", "documentation", "project docs"],
+        "pathPatterns": ["**/README*"],
+        "intentPatterns": [
+          "(?:create|write|update).*(?:readme|documentation)"
+        ]
+      }
+    },
+    "receiving-code-review": {
+      "description": "Handle code review feedback with rigor and thoroughness",
+      "priority": 4,
+      "triggers": {
+        "keywords": ["code review", "pr feedback", "review comment", "pr comment", "reviewer"],
+        "keywordPatterns": ["code.review", "pr.feedback", "review.comment"],
+        "intentPatterns": [
+          "(?:respond|address|handle).*(?:review|feedback|comment)",
+          "(?:reviewer).*(?:said|suggested|asked)"
+        ],
+        "contextPatterns": ["from the reviewer", "in the pr", "review feedback"]
+      }
+    },
+    "defense-in-depth": {
+      "description": "Multi-layer validation for bug prevention",
+      "priority": 6,
+      "triggers": {
+        "keywords": ["validation", "guard", "defense", "layer", "prevent", "safeguard"],
+        "intentPatterns": [
+          "(?:prevent|avoid).*(?:bug|error|issue)",
+          "(?:add).*(?:validation|guard|check)"
+        ]
+      },
+      "relatedSkills": ["systematic-debugging"]
+    },
+    "github-actions": {
+      "description": "GitHub Actions CI/CD workflow patterns",
+      "priority": 6,
+      "triggers": {
+        "keywords": ["github action", "github workflow", "workflow", "ci/cd", "cicd", "pipeline", "ci", "cd"],
+        "keywordPatterns": ["github.action", "ci/?cd", "\\bworkflow\\b"],
+        "pathPatterns": [".github/workflows/**", ".github/**/*.yml", ".github/**/*.yaml"],
+        "intentPatterns": [
+          "(?:create|add|update).*(?:workflow|action|pipeline)",
+          "(?:ci|cd).*(?:pipeline|workflow)"
+        ],
+        "contentPatterns": ["runs-on:", "uses:", "steps:"]
+      }
+    }
+  }
+}

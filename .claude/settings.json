@@ -1,0 +1,175 @@
+{
+  "includeCoAuthoredBy": true,
+  "env": {
+    "INSIDE_CLAUDE_CODE": "1",
+    "BASH_DEFAULT_TIMEOUT_MS": "420000",
+    "BASH_MAX_TIMEOUT_MS": "420000"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/skill-eval.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "# Prevent editing on main/master branch\nBRANCH=$(git branch --show-current 2>/dev/null)\n[ \"$BRANCH\" != \"main\" ] && [ \"$BRANCH\" != \"master\" ] || { echo '{\"block\": true, \"message\": \"Cannot edit files on main/master branch. Create a feature branch first.\"}' >&2; exit 2; }",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "# Auto-format Python files with ruff\nif [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\.py$ ]]; then\n  file_path=\"${CLAUDE_TOOL_INPUT_FILE_PATH}\"\n  if command -v ruff &>/dev/null; then\n    ruff format \"$file_path\" 2>&1\n    ruff check --fix --silent \"$file_path\" 2>&1\n    echo '{\"feedback\": \"Python formatting applied.\", \"suppressOutput\": true}'\n  fi\nfi",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "# Auto-install dependencies when requirements.txt changes\nif [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ requirements.*\\.txt$ ]]; then\n  echo '{\"feedback\": \"Installing dependencies...\"}' >&2\n  pip install -r \"${CLAUDE_TOOL_INPUT_FILE_PATH}\" --quiet 2>&1 && echo '{\"feedback\": \"Dependencies installed.\", \"suppressOutput\": true}' || {\n    echo '{\"feedback\": \"Failed to install dependencies.\"}' >&2\n    exit 1\n  }\nfi",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "# Auto-run tests when test files change\nif [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ (test_.*\\.py|.*_test\\.py|conftest\\.py)$ ]]; then\n  if command -v pytest &>/dev/null; then\n    echo '{\"feedback\": \"Running tests...\"}' >&2\n    pytest \"${CLAUDE_TOOL_INPUT_FILE_PATH}\" --tb=short -q 2>&1 | tail -30\n    exit_code=${PIPESTATUS[0]}\n    if [ $exit_code -eq 0 ]; then\n      echo '{\"feedback\": \"Tests passed.\"}'\n    else\n      echo '{\"feedback\": \"Tests failed. See output above.\"}' >&2\n    fi\n  fi\nfi",
+            "timeout": 120
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "# Type-check Python files with pyright\nif [[ \"$CLAUDE_TOOL_INPUT_FILE_PATH\" =~ \\.py$ ]]; then\n  if command -v pyright &>/dev/null; then\n    echo '{\"feedback\": \"Checking Python types...\"}' >&2\n    output=$(pyright \"${CLAUDE_TOOL_INPUT_FILE_PATH}\" 2>&1)\n    exit_code=$?\n    if [ $exit_code -eq 0 ]; then\n      echo '{\"feedback\": \"No type errors.\", \"suppressOutput\": true}'\n    else\n      errors=$(echo \"$output\" | grep -E \"error:\" | head -10)\n      if [ -n \"$errors\" ]; then\n        echo '{\"feedback\": \"Pyright found type errors:\"}' >&2\n        echo \"$errors\" >&2\n      fi\n    fi\n    # Non-blocking\n    exit 0\n  fi\nfi",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "context7@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "github@claude-plugins-official": false,
+    "code-simplifier@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": false,
+    "typescript-lsp@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "serena@claude-plugins-official": false,
+    "security-guidance@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/pip.exe:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(PYTHONPATH=src venv/Scripts/python:*)",
+      "Bash(cat:*)",
+      "Bash(cd:*)",
+      "Bash(claude:*)",
+      "Bash(cmd.exe /c \"refreshenv\":*)",
+      "Bash(cmd.exe /c \"where\":*)",
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(echo:*)",
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH\")",
+      "Bash(findstr:*)",
+      "Bash(gh:*)",
+      "Bash(git:*)",
+      "Bash(grep:*)",
+      "Bash(if not exist * mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(ogrinfo:*)",
+      "Bash(ping:*)",
+      "Bash(pip:*)",
+      "Bash(pip-audit:*)",
+      "Bash(pip3:*)",
+      "Bash(py:*)",
+      "Bash(py3:*)",
+      "Bash(pyright:*)",
+      "Bash(pytest:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pwd:*)",
+      "Bash(ruff:*)",
+      "Bash(safety:*)",
+      "Bash(source:*)",
+      "Bash(sqlite3:*)",
+      "Bash(test:*)",
+      "Bash(timeout:*)",
+      "Bash(venv/Scripts/pip.exe:*)",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(where:*)",
+      "Bash(which:*)",
+      "Bash(winget:*)",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "WebFetch",
+      "WebSearch",
+      "Write",
+      "mcp__claude_ai_Canva__cancel-editing-transaction",
+      "mcp__claude_ai_Canva__export-design",
+      "mcp__claude_ai_Canva__get-assets",
+      "mcp__claude_ai_Canva__get-design",
+      "mcp__claude_ai_Canva__get-design-content",
+      "mcp__claude_ai_Canva__get-export-formats",
+      "mcp__claude_ai_Canva__list-brand-kits",
+      "mcp__claude_ai_Canva__search-designs",
+      "mcp__claude_ai_Canva__search-folders",
+      "mcp__claude_ai_Canva__start-editing-transaction",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "mcp__plugin_playwright_playwright__browser_evaluate",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot"
+    ],
+    "deny": [
+      "Bash(chmod 777*)",
+      "Bash(curl * | bash*)",
+      "Bash(rm -rf /)*",
+      "Bash(sudo *)",
+      "Bash(wget * | bash*)"
+    ]
+  },
+  "projectContext": {
+    "language": "python",
+    "minPythonVersion": "3.14",
+    "dependencyFile": "requirements.txt"
+  }
+}

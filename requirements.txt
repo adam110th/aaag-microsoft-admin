@@ -1,0 +1,25 @@
+# aaag-microsoft-admin — Dependencies
+# Python 3.14+ required
+
+# Authentication
+msal==1.35.0
+
+# HTTP requests
+requests==2.32.5
+
+# HTML parsing (used by extract_pst_emails.py)
+beautifulsoup4==4.14.3
+
+# Environment variable loading
+python-dotenv==1.2.1
+
+# CLI table formatting
+tabulate==0.9.0
+
+# Testing
+pytest==9.0.2
+responses==0.26.0
+
+# Linting & type checking
+ruff==0.15.4
+pyright==1.1.401

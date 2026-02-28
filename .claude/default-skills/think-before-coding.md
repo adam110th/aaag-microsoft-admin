@@ -1,0 +1,7 @@
+When Claude Code receives a task, do not jump straight into writing code. Follow these principles:
+
+**Think before coding** — State assumptions explicitly before starting work. If the task is ambiguous, present multiple interpretations and ask which one is intended rather than silently picking one. Push back when a simpler approach exists — suggest it before implementing the more complex option. If something is unclear, stop and name exactly what is confusing rather than guessing and proceeding.
+
+**Simplicity first** — Write the minimum code that solves the problem. If a solution can be expressed in fewer lines without sacrificing readability, prefer the shorter version. Do not add layers of abstraction, configuration, or generalization beyond what the task requires. If 200 lines could be 50, rewrite it. Resist the urge to over-engineer — solve the problem at hand, not hypothetical future problems.
+
+**Create a skills file** only if Claude Code assesses that adding a skill would assist future tasks in the project. It should be added into the project-skills folder. If claude code deems that the skill would be useful to include as a default-skill, then advise the user that you have a recommendation that should be pushed to the git hub repo (if the current working repo is not .AAAG-AU/dotfiles-github-defaults): https://github.com/AAAG-AU/.dotfiles-github-defaults   If the current working repo is in fact AAAG-AU/.dotfiles-github-defaults then automatically create the default skill.

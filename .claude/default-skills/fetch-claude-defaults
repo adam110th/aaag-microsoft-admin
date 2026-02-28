@@ -1,0 +1,3 @@
+If claude code is working on a repository, and there is no .claude folder in the folder root, fetch the .claude folder from the github repository: https://github.com/AAAG-AU/.dotfiles-github-defaults and copy it into the current working repository.
+
+If there is already a .claude folder in the repository, check that it is up to date with all latest .claude files in the github repository: https://github.com/AAAG-AU/.dotfiles-github-defaults
