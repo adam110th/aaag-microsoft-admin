@@ -34,6 +34,22 @@ def _save_token_cache(cache: msal.SerializableTokenCache) -> None:
 # ---------------------------------------------------------------------------
 
 
+def check_token_roles(token: str, required_roles: list[str]) -> list[str]:
+    """Decode a JWT and return any *required_roles* missing from the token.
+
+    Returns an empty list when all required roles are present.
+    Best-effort — silently returns an empty list if the token can't be decoded.
+    """
+    try:
+        payload_b64 = token.split(".")[1]
+        payload_b64 += "=" * (4 - len(payload_b64) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+        granted = set(payload.get("roles", []))
+        return [r for r in required_roles if r not in granted]
+    except Exception:
+        return []
+
+
 def get_client_credentials_token(
     env: dict[str, str],
     scopes: list[str] | None = None,

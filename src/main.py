@@ -10,7 +10,10 @@ import importlib
 import pkgutil
 import sys
 
+import requests.exceptions
+
 import src.tools as _tools_pkg
+from src.core.graph_client import GraphAPIError
 from src.tools._base import ToolDefinition
 
 
@@ -91,6 +94,10 @@ def main() -> None:
             tool.run()
         except KeyboardInterrupt:
             print(f"\n\n{tool.name} interrupted.")
+        except GraphAPIError as exc:
+            print(f"\n  Graph API error: {exc}")
+        except requests.exceptions.HTTPError as exc:
+            print(f"\n  HTTP error: {exc}")
         except SystemExit:
             pass  # tool may call sys.exit(); don't kill the menu
         print()

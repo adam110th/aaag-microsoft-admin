@@ -6,7 +6,7 @@ import pytest
 import responses
 
 from src.core.config import GRAPH_BASE
-from src.core.graph_client import GraphClient, TenantMismatchError
+from src.core.graph_client import GraphClient, GraphPermissionError, TenantMismatchError
 from tests.conftest import CHAT_ID, FAKE_TOKEN
 
 
@@ -104,20 +104,20 @@ class TestTenantMismatchDetection:
             client.get(url)
 
     @responses.activate
-    def test_403_other_error_raises_http_error(self) -> None:
+    def test_403_other_error_raises_permission_error(self) -> None:
         url = f"{GRAPH_BASE}/chats/{CHAT_ID}/messages?$top=50"
         responses.add(
             responses.GET, url,
             json={
                 "error": {
-                    "code": "Forbidden",
+                    "code": "Authorization_RequestDenied",
                     "message": "Insufficient privileges to complete the operation.",
                 }
             },
             status=403,
         )
         client = GraphClient(FAKE_TOKEN)
-        with pytest.raises(Exception, match="403"):
+        with pytest.raises(GraphPermissionError, match="Insufficient privileges"):
             client.get(url)
 
 
