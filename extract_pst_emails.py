@@ -30,7 +30,7 @@ PST_PATH = (
     r"\Australis Navigator Pty Ltd\C9 Software Development"
     r"\Email History to 26 Feb 2026\Exchange.001.pst"
 )
-OUTPUT_DIR = Path(r"H:\Python\Teams-Interaction\extracted_emails")
+OUTPUT_DIR = Path(__file__).resolve().parent / "extracted_emails"
 SAVE_ATTACHMENTS = True
 MAX_FILENAME_LEN = 80
 

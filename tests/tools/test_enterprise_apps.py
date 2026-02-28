@@ -173,7 +173,14 @@ class TestShowAppDetails:
             json={"appRoles": []},
             status=200,
         )
-        # Mock assignments
+        # Mock appRoleAssignments (granted API permissions)
+        responses.add(
+            responses.GET,
+            f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignments",
+            json={"value": []},
+            status=200,
+        )
+        # Mock assignments (users/groups)
         responses.add(
             responses.GET,
             f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignedTo",
@@ -200,6 +207,65 @@ class TestShowAppDetails:
         out = capsys.readouterr().out
         assert "Test App Detail" in out
         assert "Owner1" in out
+        assert "Roles and Administrators" in out
+        assert "Granted API Permissions" in out
+
+    @responses.activate
+    def test_displays_granted_permissions(self, capsys: pytest.CaptureFixture[str]) -> None:
+        sp = make_sp("sp-1", "Perm App")
+        # Mock owners
+        responses.add(
+            responses.GET,
+            f"{GRAPH_BASE}/servicePrincipals/sp-1/owners",
+            json={"value": []},
+            status=200,
+        )
+        # Mock appRoles
+        responses.add(
+            responses.GET,
+            f"{GRAPH_BASE}/servicePrincipals/sp-1",
+            json={"appRoles": []},
+            status=200,
+        )
+        # Mock appRoleAssignments with data
+        responses.add(
+            responses.GET,
+            f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignments",
+            json={"value": [
+                {
+                    "resourceDisplayName": "Microsoft Graph",
+                    "appRoleId": "abcd1234-5678-9012-3456-789012345678",
+                },
+            ]},
+            status=200,
+        )
+        # Mock assignments
+        responses.add(
+            responses.GET,
+            f"{GRAPH_BASE}/servicePrincipals/sp-1/appRoleAssignedTo",
+            json={"value": []},
+            status=200,
+        )
+        # Mock SSO
+        responses.add(
+            responses.GET,
+            f"{GRAPH_BASE}/servicePrincipals/sp-1",
+            json={"preferredSingleSignOnMode": None},
+            status=200,
+        )
+        # Mock provisioning
+        responses.add(
+            responses.GET,
+            f"{GRAPH_BASE}/servicePrincipals/sp-1/synchronization/jobs",
+            json={"value": []},
+            status=200,
+        )
+
+        client = GraphClient(FAKE_TOKEN)
+        show_app_details(client, sp)
+        out = capsys.readouterr().out
+        assert "Microsoft Graph" in out
+        assert "abcd1234" in out
 
 
 # ---------------------------------------------------------------------------

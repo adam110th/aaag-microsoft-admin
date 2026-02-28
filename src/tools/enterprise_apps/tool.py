@@ -166,8 +166,11 @@ def show_app_details(client: GraphClient, app: dict) -> None:
     except Exception as exc:
         print(f"  Error fetching owners: {exc}")
 
-    # 3. App Roles
-    print("\n--- App Roles ---")
+    # 3. Roles and Administrators
+    print("\n--- Roles and Administrators ---")
+
+    # 3a. App Roles (roles defined by this application)
+    print("\n  App Roles (defined by this application):")
     roles = app.get("appRoles", [])
     if not roles:
         # Fetch full SP to get appRoles if not in original select
@@ -181,11 +184,27 @@ def show_app_details(client: GraphClient, app: dict) -> None:
     if roles:
         for role in roles:
             enabled = "enabled" if role.get("isEnabled") else "disabled"
-            print(f"  {role.get('displayName', '???')} ({enabled})")
+            print(f"    {role.get('displayName', '???')} ({enabled})")
             if role.get("description"):
-                print(f"    {role['description'][:80]}")
+                print(f"      {role['description'][:80]}")
     else:
-        print("  (none)")
+        print("    (none)")
+
+    # 3b. Granted API Permissions (what this app is authorized to access)
+    print("\n  Granted API Permissions:")
+    try:
+        url = f"{GRAPH_BASE}/servicePrincipals/{sp_id}/appRoleAssignments"
+        resp = client.get(url)
+        grants = resp.json().get("value", [])
+        if grants:
+            for grant in grants:
+                resource = grant.get("resourceDisplayName", "???")
+                role_id = grant.get("appRoleId", "")
+                print(f"    {resource} (role: {role_id[:8]}...)")
+        else:
+            print("    (none)")
+    except Exception as exc:
+        print(f"    Error fetching API permissions: {exc}")
 
     # 4. Users and Groups
     print("\n--- Users and Groups ---")

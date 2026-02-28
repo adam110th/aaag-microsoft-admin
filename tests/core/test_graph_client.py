@@ -121,6 +121,43 @@ class TestTenantMismatchDetection:
             client.get(url)
 
 
+class TestGraphClientPost:
+    @responses.activate
+    def test_post_success(self) -> None:
+        url = f"{GRAPH_BASE}/users"
+        responses.add(responses.POST, url, json={"id": "new-user"}, status=201)
+        client = GraphClient(FAKE_TOKEN)
+        resp = client.post(url, json_body={"displayName": "Test"})
+        assert resp.status_code == 201
+        assert resp.json()["id"] == "new-user"
+
+    @responses.activate
+    def test_post_sends_json_body(self) -> None:
+        url = f"{GRAPH_BASE}/groups"
+        responses.add(responses.POST, url, json={"id": "g1"}, status=201)
+        client = GraphClient(FAKE_TOKEN)
+        client.post(url, json_body={"displayName": "Group"})
+        assert responses.calls[0].request.body == b'{"displayName": "Group"}'
+
+
+class TestGraphClientPatch:
+    @responses.activate
+    def test_patch_success(self) -> None:
+        url = f"{GRAPH_BASE}/users/user-1"
+        responses.add(responses.PATCH, url, status=204)
+        client = GraphClient(FAKE_TOKEN)
+        resp = client.patch(url, json_body={"accountEnabled": False})
+        assert resp.status_code == 204
+
+    @responses.activate
+    def test_patch_sends_json_body(self) -> None:
+        url = f"{GRAPH_BASE}/users/user-1"
+        responses.add(responses.PATCH, url, status=204)
+        client = GraphClient(FAKE_TOKEN)
+        client.patch(url, json_body={"displayName": "Updated"})
+        assert responses.calls[0].request.body == b'{"displayName": "Updated"}'
+
+
 class TestGraphClientDelete:
     @responses.activate
     def test_delete_success(self) -> None:

@@ -7,9 +7,11 @@ Microsoft 365 Admin Toolkit — a modular CLI for managing Microsoft 365 resourc
 | Tool | Description |
 |------|-------------|
 | **Teams Chat Export** | Export messages and media from a Microsoft Teams chat |
-| **Enterprise Applications** | List, inspect, and manage Azure AD service principals |
+| **Enterprise Applications** | List, inspect, and manage Azure AD service principals (with roles, API permissions, cert status) |
 
 New tools are auto-discovered: add a package to `src/tools/` with a `TOOL` constant and it appears in the menu.
+
+See [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md) for the prioritised plan covering User Management, Group Management, License Management, Security & Compliance tools, and more.
 
 ## Prerequisites
 
@@ -66,6 +68,8 @@ Each tool declares:
 - **`run()` function** — entry point called by the menu
 
 Auth is per-tool: each tool requests only the minimum scopes it needs. Delete operations trigger a scope upgrade with re-authentication.
+
+The `GraphClient` supports GET, POST, PATCH, DELETE with automatic retry (429/5xx) and pagination.
 
 ## Testing
 
